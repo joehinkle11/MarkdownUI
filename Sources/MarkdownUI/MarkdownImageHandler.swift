@@ -21,7 +21,7 @@ import SwiftUI
 public struct MarkdownImageHandler {
   var imageAttachment: (URL) -> AnyPublisher<NSTextAttachment, Never>
 
-  public init(imageAttachment: @escaping (URL) -> AnyPublisher<NSTextAttachment, Never>) {
+  init(imageAttachment: @escaping (URL) -> AnyPublisher<NSTextAttachment, Never>) {
     self.imageAttachment = imageAttachment
   }
 }
@@ -41,7 +41,7 @@ extension MarkdownImageHandler {
       .replaceError(with: NSTextAttachment())
       .eraseToAnyPublisher()
   }
-
+  
   /// A `MarkdownImageHandler` instance that loads images from resource files or asset catalogs.
   /// - Parameters:
   ///   - name: A closure that extracts the asset name from a given URL. If not specified, the image handler
@@ -62,6 +62,29 @@ extension MarkdownImageHandler {
         }
       #elseif os(iOS) || os(tvOS)
         image = UIImage(named: name(url), in: bundle, compatibleWith: nil)
+      #endif
+      let attachment = image.map { image -> NSTextAttachment in
+        let result = ResizableImageAttachment()
+        result.image = image
+        return result
+      }
+      return Just(attachment ?? NSTextAttachment()).eraseToAnyPublisher()
+    }
+  }
+  
+  /// A `MarkdownImageHandler` instance that loads images from raw image data.
+  /// - Parameters:
+  ///   - getImageData: A closure that extracts the data from a given URL.
+  public static func customLocalImage(
+    getImageData: @escaping (URL) -> Data
+  ) -> MarkdownImageHandler {
+    MarkdownImageHandler { url in
+      let imageData: Data = getImageData(url)
+      let image: PlatformImage?
+      #if os(macOS)
+        image = NSImage(data: imageData)
+      #elseif os(iOS) || os(tvOS)
+        image = UIImage(data: imageData)
       #endif
       let attachment = image.map { image -> NSTextAttachment in
         let result = ResizableImageAttachment()
