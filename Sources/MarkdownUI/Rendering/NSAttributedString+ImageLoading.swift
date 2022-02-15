@@ -20,8 +20,19 @@ extension NSAttributedString {
     }
 
     let imageAttachmentPublishers = urls.compactMap { url -> (URL, MarkdownImageHandler)? in
-      guard let scheme = url.scheme, let imageHandler = imageHandlers[scheme] else {
-        return nil
+      guard let scheme = url.scheme else {
+        if let emptySchemeHandler = imageHandlers[""] {
+          return (url, emptySchemeHandler)
+        } else {
+          return nil
+        }
+      }
+      guard let imageHandler = imageHandlers[scheme] else {
+        if let unknownSchemeHandler = imageHandlers[":unknown_scheme:"] {
+          return (url, unknownSchemeHandler)
+        } else {
+          return nil
+        }
       }
       return (url, imageHandler)
     }
